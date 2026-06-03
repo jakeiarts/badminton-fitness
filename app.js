@@ -314,6 +314,40 @@
         how: "Small squat, jump, land soft and quiet into a squat, reset.",
         beg: "Very low jump.", std: "Moderate, quiet.", hard: "A touch higher, still soft.",
         reps: "2 × 6–10", mistakes: "Hard, noisy landings; knees caving.", why: "Builds toward jumping for smashes — control before height." },
+
+      // BALANCE, AGILITY & COORDINATION (indoor, no court needed)
+      { name: "Tandem (heel-to-toe) balance", cat: "Balance, Agility & Coordination", tags: ["none", "balance", "lower", "beginner"],
+        how: "Stand with one foot directly in front of the other, heel touching toe, and hold steady and tall.",
+        beg: "Fingertip on a wall.", std: "No support, 20–40s.", hard: "Eyes closed near a wall.",
+        reps: "3 × 20–40s / lead foot", mistakes: "Looking down; stiff, locked knees.", why: "A steady, narrow base — the control you need to stop and change direction without wobbling." },
+      { name: "Single-leg reach (3-direction)", cat: "Balance, Agility & Coordination", tags: ["none", "balance", "lower", "intermediate"],
+        how: "Balance on one leg. With the other foot lightly reach forward, then out to the side, then behind — touching the floor lightly and returning tall each time.",
+        beg: "Small reaches with light support.", std: "Bigger reaches, no support.", hard: "Slower, no floor touch.",
+        reps: "2 × 5 reaches each way / leg", mistakes: "Knee caving inward; rushing.", why: "Almost exactly the controlled single-leg reach you make lunging to each corner of the court." },
+      { name: "Single-leg balance with wall ball toss", cat: "Balance, Agility & Coordination", tags: ["none", "balance", "footwork", "intermediate"],
+        how: "Stand on one leg and gently toss a soft ball (or rolled-up socks) against a wall and catch it, staying balanced.",
+        beg: "Two feet, easy catches.", std: "One leg, steady.", hard: "Vary the toss height and side.",
+        reps: "2 × 20–30s / leg", mistakes: "Hopping; losing tall posture.", why: "Trains balance, hand-eye and reaction together — like steadying yourself to play a shot." },
+      { name: "Standing split-step reaction", cat: "Balance, Agility & Coordination", tags: ["none", "footwork", "balance", "beginner"],
+        how: "From a relaxed ready stance, do a small split step (tiny soft hop), then immediately push one step toward a direction, and recover to centre.",
+        beg: "Slow, choose the direction yourself.", std: "React to a random cue (a sound, or a hand you flash).", hard: "Quicker cue, smaller recovery.",
+        reps: "2 × 8–10 reactions", mistakes: "Heavy, flat-footed landing.", why: "Grooves the split step and explosive first step that start every single movement in badminton." },
+      { name: "Shadow swings (overhead & net)", cat: "Balance, Agility & Coordination", tags: ["none", "upper", "footwork", "balance", "beginner"],
+        how: "With no shuttle (racket optional), rehearse the swing of an overhead clear/drop/smash, and a gentle net shot — smooth and controlled.",
+        beg: "Slow, focus on the shape.", std: "Add a small lunge or step with each.", hard: "Link 4–6 different shots in a flow.",
+        reps: "2–3 × 8–10 swings", mistakes: "Rushing; no follow-through.", why: "Grooves your stroke technique and timing indoors, so it feels natural when you're back on court." },
+      { name: "Wall rebound catch (reaction)", cat: "Balance, Agility & Coordination", tags: ["none", "upper", "balance", "beginner"],
+        how: "Throw a soft ball at a wall a short distance away and catch the rebound; vary the speed and angle.",
+        beg: "Soft and predictable.", std: "Faster or off to the side.", hard: "One hand / smaller ball.",
+        reps: "2 × 30–45s", mistakes: "Stiff hands; watching only one spot.", why: "Sharpens hand-eye coordination and reaction speed for fast exchanges and net play." },
+      { name: "Quick feet on the spot", cat: "Balance, Agility & Coordination", tags: ["none", "footwork", "balance", "lower", "intermediate"],
+        how: "Fast, light, small steps on the balls of your feet on the spot — stay low, quiet and relaxed.",
+        beg: "Slow, short bursts.", std: "15–20s bursts.", hard: "Change direction on a cue.",
+        reps: "4 × 15–20s", mistakes: "Standing tall; heavy, noisy feet.", why: "Builds foot speed and a low, ready position so you start moving quickly to the shuttle." },
+      { name: "Reaction drop-catch", cat: "Balance, Agility & Coordination", tags: ["none", "balance", "beginner"],
+        how: "Hold a ball or shuttle at shoulder height, let it drop, and catch it — first after one bounce, then before it bounces.",
+        beg: "Catch after a bounce, two hands.", std: "Catch before the bounce, one hand.", hard: "Drop it off-centre so you must move.",
+        reps: "2 × 10–15", mistakes: "Watching your hand instead of the object.", why: "Trains pure reaction time and tracking — directly useful for returning fast shots." },
     ],
 
     /* ---- Strength sessions (Today + Weekly) ---- */
@@ -527,13 +561,14 @@
     strengthA: { label: "Strength A",       emoji: "💪", need: "Home · small space",        kind: "strength", sessionKey: "A" },
     strengthB: { label: "Strength B",       emoji: "🏋️", need: "Home · small space",        kind: "strength", sessionKey: "B" },
     mobility:  { label: "Mobility & stretch", emoji: "🧘", need: "Quiet · tiny space · ideal late", kind: "mobility" },
+    skills:    { label: "Balance & skills", emoji: "🤹", need: "Indoor · tiny space · no court", kind: "skills" },
     run:       { label: "Easy run–walk",    emoji: "🏃", need: "Outdoors",                  kind: "run" },
     footwork:  { label: "Footwork",         emoji: "🏸", need: "Needs clear floor space",   kind: "footwork" },
     walk:      { label: "Easy walk",        emoji: "🚶", need: "Outdoors · low effort",     kind: "walk" },
     rest:      { label: "Rest",             emoji: "😴", need: "Recovery",                   kind: "rest" },
   };
   // Order shown in the swap picker
-  const SWAP_ORDER = ["strengthA", "strengthB", "mobility", "run", "footwork", "walk", "rest"];
+  const SWAP_ORDER = ["strengthA", "strengthB", "mobility", "skills", "run", "footwork", "walk", "rest"];
 
   function workoutForToday() {
     const { dayName, plan } = todaysPlannedType();
@@ -607,6 +642,8 @@
       html += renderTodayFootwork(rec, comp);
     } else if (w.kind === "mobility") {
       html += renderTodayMobility(rec, comp);
+    } else if (w.kind === "skills") {
+      html += renderTodaySkills(rec, comp);
     } else if (w.kind === "walk") {
       html += renderTodayWalk(rec, comp);
     } else if (w.kind === "flex") {
@@ -718,6 +755,43 @@
     return html;
   }
 
+  // Indoor, court-free balance / coordination / reaction / technique session
+  const SKILLS_TODAY = [
+    ["Tandem (heel-to-toe) balance", "3 × 20–40s / lead foot"],
+    ["Single-leg reach (3-direction)", "2 × 5 reaches each way / leg"],
+    ["Standing split-step reaction", "2 × 8–10 reactions"],
+    ["Quick feet on the spot", "4 × 15–20s"],
+    ["Wall rebound catch (reaction)", "2 × 30–45s"],
+    ["Shadow swings (overhead & net)", "2–3 × 8–10 swings"],
+  ];
+
+  function renderTodaySkills(rec, comp) {
+    const items = SKILLS_TODAY;
+    const doneCount = items.filter(([n]) => comp && comp.results && comp.results[n] && comp.results[n].done).length;
+    const pct = items.length ? Math.round((doneCount / items.length) * 100) : 0;
+    let html = `
+      <div class="card">
+        <h2>Today: Balance &amp; skills 🤹</h2>
+        <p>Badminton-specific practice you can do <strong>indoors in a small space, no court needed</strong> — balance, quick feet, reactions and shadow swings. Great for sharpening movement and racket feel on a day you can't get out or move much. You'll just need a <strong>soft ball or rolled-up socks</strong> (and a racket if you have one, for the shadow swings).</p>
+        <div class="progress" aria-hidden="true"><span id="todayBar" style="width:${pct}%"></span></div>
+        <p class="muted" id="todayBarLabel">${doneCount} of ${items.length} done</p>`;
+    html += items.map(([name, sets]) => {
+      const ex = libByName(name) || { how: "" };
+      const res = (comp && comp.results && comp.results[name]) || {};
+      const done = !!res.done;
+      return `
+        <div class="ex-item ${done ? "is-done" : ""}" data-ex-item>
+          <label class="inline-check" style="flex:1">
+            <input type="checkbox" data-strength-check data-key="S" data-ref="${esc(name)}" data-name="${esc(name)}" ${done ? "checked" : ""}>
+            <span><span class="ex-name">${esc(name)}</span><span class="ex-meta">${esc(sets)}${ex.how ? ` · ${esc(ex.how)}` : ""}</span></span>
+          </label>
+          <div style="margin-top:.4rem">${watchLink(name, "badminton home drill")}</div>
+        </div>`;
+    }).join("");
+    html += `</div>` + completeBlock(comp, "S");
+    return html;
+  }
+
   function renderTodayWalk(rec, comp) {
     return `
       <div class="card">
@@ -749,6 +823,7 @@
     let html = `
       <div class="card">
         <div class="card-head"><h2>${esc(sess.name)}</h2><span class="pill pill-warn badge-load">${esc(sess.load)}</span></div>
+        <p class="muted" style="margin:-.2rem 0 .6rem;font-size:.88rem">🏸 ${esc(badmintonBenefit(key==="A"?"strengthA":"strengthB"))}</p>
         ${rec==="tired" ? `<p class="muted">Reduced volume applied.</p>` : ""}
         <div class="progress" aria-hidden="true"><span id="todayBar" style="width:${pct}%"></span></div>
         <p class="muted" id="todayBarLabel">${doneCount} of ${total} done</p>`;
@@ -890,6 +965,21 @@
   /* ----------------------------------------------------------
      6. TAB 2 — WEEKLY PLAN
      ---------------------------------------------------------- */
+  // Every day feeds badminton — this spells out how, so nothing feels like "random fitness".
+  function badmintonBenefit(type) {
+    switch (type) {
+      case "strengthA":
+      case "strengthB": return "Leg, calf, core & shoulder strength for lunging, braking, jumping and overhead shots.";
+      case "run":       return "Aerobic base so you recover faster between rallies and last longer on court.";
+      case "footwork":  return "Direct badminton movement: split steps, lunges and covering all six corners.";
+      case "flex":      return "Your choice: footwork, a relaxed badminton hit, hopping readiness, or recovery.";
+      case "mobility":  return "Ankle, hip and shoulder mobility plus balance — the range and control footwork needs.";
+      case "skills":    return "Balance, quick feet, reactions and shadow swings — court movement and racket feel, indoors.";
+      case "walk":      return "Easy active recovery that helps your calves and legs adapt for harder court work.";
+      default:          return "Recovery — when your calves and legs actually adapt and badminton fitness is built.";
+    }
+  }
+
   function weekLoad() {
     // crude load estimate from session types this week
     let score = 0;
@@ -944,7 +1034,8 @@
           <h3 style="margin:0">${esc(d.day)}</h3>
           <label class="inline-check"><input type="checkbox" data-weekdone data-day="${esc(d.day)}" ${st.done?"checked":""}> Done</label>
         </div>
-        <ul style="margin:.4rem 0 .6rem">${items.map((i)=>`<li>${esc(i)}</li>`).join("")}</ul>
+        <ul style="margin:.4rem 0 .4rem">${items.map((i)=>`<li>${esc(i)}</li>`).join("")}</ul>
+        <p class="muted" style="margin:0 0 .5rem;font-size:.85rem">🏸 ${esc(badmintonBenefit(st.rest ? "rest" : d.type))}</p>
         <details class="acc" style="border:none;background:transparent;margin:0">
           <summary style="padding:.4rem 0;min-height:auto">Adjust this day</summary>
           <div class="acc-body" style="padding:.5rem 0 0">
@@ -986,6 +1077,7 @@
     { id:"core", label:"Core", kind:"area" },
     { id:"mobility", label:"Mobility", kind:"area" },
     { id:"footwork", label:"Footwork", kind:"area" },
+    { id:"balance", label:"Balance & coordination", kind:"area" },
     { id:"beginner", label:"Beginner", kind:"level" },
     { id:"intermediate", label:"Intermediate", kind:"level" },
     { id:"advanced", label:"Advanced", kind:"level" },
