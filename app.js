@@ -438,6 +438,7 @@
       exerciseFeel: {},   // name -> { rating, note }
       completions: {},    // "YYYY-MM-DD" -> { sessionKey, results:{}, notes, done:true }
       weekStatus: {},     // "weekKey:Day" -> { done, rest, movedTo }
+      dayOverride: {},    // "YYYY-MM-DD" -> session type chosen via the swap picker
       runLogs: [],
       footworkLogs: [],
       progress: {
@@ -521,17 +522,26 @@
   /* ----------------------------------------------------------
      5. TAB 1 — TODAY
      ---------------------------------------------------------- */
+  // The seven things you can do on any given day. Used by the workout body AND the swap picker.
+  const SESSION_TYPES = {
+    strengthA: { label: "Strength A",       emoji: "💪", need: "Home · small space",        kind: "strength", sessionKey: "A" },
+    strengthB: { label: "Strength B",       emoji: "🏋️", need: "Home · small space",        kind: "strength", sessionKey: "B" },
+    mobility:  { label: "Mobility & stretch", emoji: "🧘", need: "Quiet · tiny space · ideal late", kind: "mobility" },
+    run:       { label: "Easy run–walk",    emoji: "🏃", need: "Outdoors",                  kind: "run" },
+    footwork:  { label: "Footwork",         emoji: "🏸", need: "Needs clear floor space",   kind: "footwork" },
+    walk:      { label: "Easy walk",        emoji: "🚶", need: "Outdoors · low effort",     kind: "walk" },
+    rest:      { label: "Rest",             emoji: "😴", need: "Recovery",                   kind: "rest" },
+  };
+  // Order shown in the swap picker
+  const SWAP_ORDER = ["strengthA", "strengthB", "mobility", "run", "footwork", "walk", "rest"];
+
   function workoutForToday() {
     const { dayName, plan } = todaysPlannedType();
-    if (!plan) return { kind: "rest", dayName, title: "Rest day" };
-    switch (plan.type) {
-      case "strengthA": return { kind: "strength", sessionKey: "A", dayName };
-      case "strengthB": return { kind: "strength", sessionKey: "B", dayName };
-      case "run": return { kind: "run", dayName };
-      case "footwork": return { kind: "footwork", dayName };
-      case "flex": return { kind: "flex", dayName };
-      default: return { kind: "rest", dayName };
-    }
+    const scheduled = plan ? plan.type : "rest";
+    const override = state.dayOverride && state.dayOverride[todayISO()];
+    const type = override || scheduled;          // what we actually do today
+    const def = SESSION_TYPES[type] || { kind: type === "flex" ? "flex" : "rest" };
+    return Object.assign({ dayName, scheduled, type, isOverridden: !!override }, def);
   }
 
   function renderToday(root) {
@@ -569,7 +579,10 @@
         ${rec==="rest" ? `<div class="note" style="margin-bottom:0">Recovery mode: an easy walk, gentle mobility, or full rest is recommended today.</div>` : ""}
       </div>`;
 
-    // Quick calf check (a 10-second gate) shown only before run / footwork / flex days
+    // Swap picker — change today's session to anything you can actually do right now
+    html += swapPickerHTML(w);
+
+    // Quick calf check (a 10-second gate) shown only before movement-heavy sessions
     if (rec !== "rest" && (w.kind === "run" || w.kind === "footwork" || w.kind === "flex")) {
       html += calfCheckHTML();
     }
@@ -592,6 +605,10 @@
       html += renderTodayRun(rec, comp);
     } else if (w.kind === "footwork") {
       html += renderTodayFootwork(rec, comp);
+    } else if (w.kind === "mobility") {
+      html += renderTodayMobility(rec, comp);
+    } else if (w.kind === "walk") {
+      html += renderTodayWalk(rec, comp);
     } else if (w.kind === "flex") {
       html += `
         <div class="card">
@@ -639,6 +656,79 @@
           <div id="calfResult"></div>
         </div>
       </details>`;
+  }
+
+  function swapPickerHTML(w) {
+    const cur = w.type;
+    const sched = SESSION_TYPES[w.scheduled];
+    const schedLabel = sched ? sched.label : "Flexible / rest";
+    return `
+      <div class="card swap-card no-print">
+        <div class="card-head">
+          <h2>Today's session</h2>
+          ${w.isOverridden ? `<button class="btn btn-sm btn-ghost" data-clearoverride>↩ Back to planned</button>` : ""}
+        </div>
+        <p class="muted" style="margin-bottom:.75rem">Planned: <strong>${esc(schedLabel)}</strong>. Can't do that right now (no space, late, indoors)? Tap something you <em>can</em> do — this only changes today.</p>
+        <div class="swap-grid">
+          ${SWAP_ORDER.map((t) => { const s = SESSION_TYPES[t]; const sel = t === cur; return `
+            <button class="swap-btn ${sel ? "is-sel" : ""}" data-swaptoday="${t}" aria-pressed="${sel}">
+              <span class="swap-emoji" aria-hidden="true">${s.emoji}</span>
+              <span class="swap-label">${esc(s.label)}</span>
+              <span class="swap-need">${esc(s.need)}</span>
+            </button>`; }).join("")}
+        </div>
+      </div>`;
+  }
+
+  // Quiet, small-space, indoor-friendly session — ideal late at night with no room to move
+  const MOBILITY_TODAY = [
+    ["Ankle knee-to-wall movement", "2 × 8–10 / side"],
+    ["Gentle calf stretch", "2 × 20–30s / side"],
+    ["Hip-flexor stretch", "2 × 20–30s / side"],
+    ["Thoracic rotation", "2 × 6–8 / side"],
+    ["Controlled shoulder rotations", "2 × 8–10"],
+    ["Dead bug", "2 × 8–12 / side"],
+    ["Single-leg balance", "3 × 20–40s / leg"],
+  ];
+
+  function renderTodayMobility(rec, comp) {
+    const items = MOBILITY_TODAY;
+    const doneCount = items.filter(([n]) => comp && comp.results && comp.results[n] && comp.results[n].done).length;
+    const pct = items.length ? Math.round((doneCount / items.length) * 100) : 0;
+    let html = `
+      <div class="card">
+        <h2>Today: Mobility &amp; stretch 🧘</h2>
+        <p>A calm, quiet session for a <strong>tiny indoor space</strong> — no jumping, no noise, perfect late at night. It keeps your ankles, hips, back and balance in good shape on a low-energy day.</p>
+        <div class="progress" aria-hidden="true"><span id="todayBar" style="width:${pct}%"></span></div>
+        <p class="muted" id="todayBarLabel">${doneCount} of ${items.length} done</p>`;
+    html += items.map(([name, sets]) => {
+      const ex = libByName(name) || { how: "" };
+      const res = (comp && comp.results && comp.results[name]) || {};
+      const done = !!res.done;
+      return `
+        <div class="ex-item ${done ? "is-done" : ""}" data-ex-item>
+          <label class="inline-check" style="flex:1">
+            <input type="checkbox" data-strength-check data-key="M" data-ref="${esc(name)}" data-name="${esc(name)}" ${done ? "checked" : ""}>
+            <span><span class="ex-name">${esc(name)}</span><span class="ex-meta">${esc(sets)}${ex.how ? ` · ${esc(ex.how)}` : ""}</span></span>
+          </label>
+          <div style="margin-top:.4rem">${watchLink(name)}</div>
+        </div>`;
+    }).join("");
+    html += `</div>` + completeBlock(comp, "M");
+    return html;
+  }
+
+  function renderTodayWalk(rec, comp) {
+    return `
+      <div class="card">
+        <h2>Today: Easy walk 🚶</h2>
+        <p>A relaxed walk at a <strong>conversational pace</strong> — great for active recovery or a busy day. Aim for about <strong>20–45 minutes</strong>; your usual 5 km route is ideal.</p>
+        <ul>
+          <li>Keep it easy — you should be able to hold a conversation.</li>
+          <li>Tall posture, relaxed shoulders, easy breathing.</li>
+          <li>Optional finisher: a few gentle calf raises or ankle circles.</li>
+        </ul>
+      </div>` + completeBlock(comp, "walk");
   }
 
   function renderTodayStrength(key, rec, comp) {
@@ -1736,12 +1826,27 @@
      16. Global event handling (delegation)
      ---------------------------------------------------------- */
   document.addEventListener("click", (e) => {
-    const t = e.target.closest("[data-go],[data-rec],[data-strength-check],[data-complete],[data-uncomplete],[data-feel],[data-filter],[data-clearfilters],[data-runlevel],[data-runstep],[data-fwlevel],[data-weekdone],[data-weekrest],[data-additem],[data-resetweek],[data-milestone],[data-addmilestone],[data-delmetric],[data-dellog],[data-jumpcrit],[data-unlockjump],[data-lockjump],[data-export],[data-importbtn],[data-reset],[data-calf-switch],[data-setjump]");
+    const t = e.target.closest("[data-go],[data-rec],[data-swaptoday],[data-clearoverride],[data-strength-check],[data-complete],[data-uncomplete],[data-feel],[data-filter],[data-clearfilters],[data-runlevel],[data-runstep],[data-fwlevel],[data-weekdone],[data-weekrest],[data-additem],[data-resetweek],[data-milestone],[data-addmilestone],[data-delmetric],[data-dellog],[data-jumpcrit],[data-unlockjump],[data-lockjump],[data-export],[data-importbtn],[data-reset],[data-calf-switch],[data-setjump]");
     if (!t) return;
 
     if (t.dataset.go) { go(t.dataset.go); return; }
 
     if (t.dataset.rec) { setRecovery(t.dataset.rec); renderToday($("#tab-today")); return; }
+
+    if (t.dataset.swaptoday) {
+      const sched = workoutForToday().scheduled;
+      state.dayOverride = state.dayOverride || {};
+      if (t.dataset.swaptoday === sched) delete state.dayOverride[todayISO()]; // chose the planned one = no override
+      else state.dayOverride[todayISO()] = t.dataset.swaptoday;
+      save(); renderToday($("#tab-today"));
+      toast("Today switched to " + (SESSION_TYPES[t.dataset.swaptoday] || {}).label);
+      return;
+    }
+    if (t.hasAttribute("data-clearoverride")) {
+      if (state.dayOverride) delete state.dayOverride[todayISO()];
+      save(); renderToday($("#tab-today")); toast("Back to your planned session");
+      return;
+    }
 
     if (t.hasAttribute("data-strength-check")) {
       toggleStrengthDone(t.dataset.key, t.dataset.name, t.checked); return;

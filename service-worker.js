@@ -1,7 +1,7 @@
 /* Badminton Fitness — service worker
    Simple cache-first strategy for offline access.
    Bump CACHE_VERSION whenever you change cached files. */
-const CACHE_VERSION = "badfit-v4";
+const CACHE_VERSION = "badfit-v5";
 const ASSETS = [
   "./",
   "./index.html",
