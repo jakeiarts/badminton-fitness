@@ -31,6 +31,16 @@
   };
   const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
+  // Build a YouTube SEARCH link (never a specific video — a search can't point to the wrong clip).
+  // The user picks a demonstration from real results for the exact exercise name.
+  function ytSearch(query) {
+    return "https://www.youtube.com/results?search_query=" + encodeURIComponent(query);
+  }
+  function watchLink(name, context) {
+    const q = name + " " + (context || "exercise how to technique");
+    return `<a class="watch-link" href="${ytSearch(q)}" target="_blank" rel="noopener noreferrer">▶ Watch how (opens YouTube search)</a>`;
+  }
+
   function toast(msg) {
     const t = $("#toast");
     t.textContent = msg;
@@ -542,23 +552,12 @@
         ${rec==="rest" ? `<div class="note" style="margin-bottom:0">Recovery mode: an easy walk, gentle mobility, or full rest is recommended today.</div>` : ""}
       </div>`;
 
-    // Suggestions (smart progression) shown on Today
-    const sugg = buildSuggestions();
-    if (sugg.length) {
-      html += `<div class="card no-print"><h2>Suggestions</h2>${
-        sugg.map((s) => `<div class="suggestion">💡 ${esc(s)}</div>`).join("")
-      }<p class="muted" style="margin:0">These are simple rule-based tips. Apply changes yourself when you agree. Not medical advice.</p></div>`;
-    }
-
-    // Sharp-pain warning (always present)
-    html += `<div class="note note-danger">⚠️ Never train through <strong>sharp pain</strong>. Stop, switch to recovery, and review the Guidance → Safety section.</div>`;
-
-    // Calf check before run/jump/footwork
+    // Quick calf check (a 10-second gate) shown only before run / footwork / flex days
     if (rec !== "rest" && (w.kind === "run" || w.kind === "footwork" || w.kind === "flex")) {
       html += calfCheckHTML();
     }
 
-    // Main workout body
+    // Main workout body — the most important thing, shown right up top
     if (rec === "rest") {
       html += `
         <div class="card">
@@ -596,6 +595,17 @@
     } else {
       html += `<div class="card"><h2>Rest day</h2><p>Nothing scheduled today. A short easy walk or gentle mobility is optional.</p></div>`;
       html += completeBlock(comp, "rest");
+    }
+
+    // Compact safety reminder (one line, not a big banner)
+    html += `<p class="muted center no-print" style="margin:.2rem 0 .8rem">⚠️ Never push through <strong>sharp</strong> pain — stop and switch to “Need a recovery day”.</p>`;
+
+    // Personalised tips, tucked into a collapsible so they don't clutter the screen
+    const sugg = buildSuggestions();
+    if (sugg.length) {
+      html += `<details class="acc no-print"><summary>💡 Tips for you (${sugg.length})</summary><div class="acc-body">${
+        sugg.map((s) => `<div class="suggestion">${esc(s)}</div>`).join("")
+      }<p class="muted" style="margin:0">Simple rule-based tips — apply them yourself when you agree.</p></div></details>`;
     }
 
     root.innerHTML = html;
@@ -672,7 +682,8 @@
         <details class="acc" style="margin:.5rem 0 0;border:none;background:transparent">
           <summary style="padding:.4rem 0;min-height:auto">Details, swap & record</summary>
           <div class="acc-body" style="padding:.5rem 0 0">
-            ${ex.how?`<p class="muted">${esc(ex.how)}</p>`:""}
+            ${ex.how?`<p class="muted" style="margin-bottom:.3rem">${esc(ex.how)}</p>`:""}
+            <div style="margin-bottom:.5rem">${watchLink(name)}</div>
             <div class="field">
               <label>Swap (same category)</label>
               <select data-swap data-key="${esc(key)}" data-ref="${esc(it.ref)}">
@@ -698,10 +709,12 @@
     if (rec === "tired") steps = steps.concat(["(Fatigued: shorten by one repeat or finish early if needed.)"]);
     return `
       <div class="card">
-        <div class="card-head"><h2>Easy run-walk session</h2><span class="pill pill-primary">${esc(lvl.title.split("—")[0].trim())}</span></div>
-        <ol>${steps.map((s)=>`<li>${esc(s)}</li>`).join("")}</ol>
-        <p class="muted">Keep it conversational. Log the details afterwards in the Running tab.</p>
-        <div class="btn-row no-print"><button class="btn btn-primary" data-go="running">Open Running &amp; log it</button></div>
+        <h2>Today: Easy run–walk 🏃</h2>
+        <p><strong>What this is:</strong> you alternate gentle jogging with walking breaks. This builds running fitness while protecting your calves. Keep the jog <strong>slow enough that you could still talk</strong> — it's meant to feel easy.</p>
+        <h3 style="margin:.2rem 0 .4rem">Your session (${esc(lvl.title.split("—")[0].trim())})</h3>
+        <ol style="margin-top:0">${steps.map((s)=>`<li>${esc(s)}</li>`).join("")}</ol>
+        <p class="muted" style="margin-bottom:1rem">Do this outdoors or anywhere you can walk and jog. Afterwards, open Running to log how it went.</p>
+        <button class="btn btn-primary btn-block no-print" data-go="running">Open Running &amp; log it afterwards</button>
       </div>
       ${completeBlock(comp, "run")}`;
   }
@@ -712,10 +725,30 @@
     if (rec === "tired") rounds = Math.max(4, Math.round(rounds * 0.75));
     return `
       <div class="card">
-        <div class="card-head"><h2>Six-corner shadow badminton</h2><span class="pill pill-primary">${esc(lvl.title.split("—")[0].trim())}</span></div>
-        <p>${rounds} rounds of ${lvl.work}s work / ${lvl.rest}s rest. ${esc(lvl.note)}</p>
-        <p class="muted">Move to each of the six court areas, controlled reaching step or shallow lunge, return to centre, reset.</p>
-        <div class="btn-row no-print"><button class="btn btn-primary" data-go="footwork">Open Footwork timer</button></div>
+        <h2>Today: Footwork practice 🏸</h2>
+        <p><strong>What this is:</strong> "Shadow badminton" means practising your court movement <strong>with no shuttle and no racket</strong>. You move from the middle out to a corner — as if reaching to hit a shot — then back to the middle. It trains the quick, balanced footwork badminton needs. <strong>Any clear space at home works</strong> — you don't need a real court.</p>
+
+        <div class="note" style="margin-bottom:.8rem">
+          <strong>Your session:</strong> ${rounds} rounds.<br>
+          Each round = <strong>${lvl.work} seconds</strong> of continuous movement, then <strong>${lvl.rest} seconds</strong> rest.<br>
+          Effort: easy and controlled. ${esc(lvl.note)}
+        </div>
+
+        <h3 style="margin:.2rem 0 .4rem">How to do one round</h3>
+        <ol style="margin-top:0">
+          <li>Stand in the <strong>middle</strong> of your space, knees softly bent, weight on the balls of your feet.</li>
+          <li>Do a small <strong>split step</strong> — a tiny hop, landing softly on both feet — to get ready.</li>
+          <li><strong>Move out to one corner:</strong> front-left, front-right, side-left, side-right, back-left, or back-right.</li>
+          <li>Reach with a <strong>controlled lunge or step</strong>, as if you were playing the shot there.</li>
+          <li><strong>Push back to the middle</strong> and reset your feet.</li>
+          <li>Repeat to a <strong>different corner</strong>, keeping going for the full ${lvl.work} seconds — then rest.</li>
+        </ol>
+        <p class="muted" style="margin-bottom:.6rem">Don't rush. Quiet, balanced landings matter more than speed. Stop if anything feels sharp.</p>
+        <p style="margin-bottom:.8rem"><strong>No court at home?</strong> You don't need one — use any clear floor, patio or garden and imagine a rough rectangle with the "net" in front of you.</p>
+        <div style="margin-bottom:.8rem">${watchLink("badminton six corner shadow footwork", "drill for beginners")}</div>
+
+        <button class="btn btn-primary btn-block no-print" data-go="footwork">▶ Open the timer &amp; court map</button>
+        <p class="muted center" style="margin:.5rem 0 0">The timer counts each round and rest for you, and the court map shows the six corners.</p>
       </div>
       ${completeBlock(comp, "footwork")}`;
   }
@@ -896,7 +929,8 @@
           <span class="ex-name">${esc(ex.name)}</span>
           <span>${equipTags.map((t)=>`<span class="pill">${esc(t)}</span>`).join(" ")}</span>
         </div>
-        <p class="muted" style="margin:.3rem 0 .5rem">${esc(ex.how)}</p>
+        <p class="muted" style="margin:.3rem 0 .4rem">${esc(ex.how)}</p>
+        <div style="margin-bottom:.3rem">${watchLink(ex.name)}</div>
         <details class="acc" style="border:none;background:transparent;margin:0">
           <summary style="padding:.3rem 0;min-height:auto">More</summary>
           <div class="acc-body" style="padding:.4rem 0 0">
@@ -1061,34 +1095,43 @@
      ---------------------------------------------------------- */
   function renderFootwork(root) {
     const lvl = DATA.footworkLevels.find((l)=>l.n===state.footworkLevel) || DATA.footworkLevels[0];
+    // This represents ONE HALF of the court — your side. The net is in FRONT of you (top).
+    // You stand in the middle of YOUR half (not on the net) and move out to the six corners.
     const zones = [
-      ["Rear left","rear"],["Rear right","rear"],
-      ["Side left","side"],["Side right","side"],
-      ["Front left","front"],["Front right","front"],
+      ["Front left","front"],["Front right","front"],   // nearest the net
+      ["Side left","side"],["Side right","side"],         // midcourt
+      ["Rear left","rear"],["Rear right","rear"],         // back of your half
     ];
     let html = `
       <div class="page-head"><h1>Badminton Footwork</h1><p class="sub">Six-corner shadow movement · level ${state.footworkLevel}</p></div>
 
       <div class="card">
-        <h2>Court map</h2>
-        <div class="court-wrap"><div class="court" aria-label="Badminton court with six movement areas">
+        <h2>What to do</h2>
+        <p>This diagram is <strong>your half of the court</strong>. The net is <strong>in front of you</strong> (top). You stand in the <strong>middle of your own half</strong> — the orange dot — <em>not</em> on the net. When the timer starts, move out to one of the <strong>six corners</strong>, reach as if playing a shot, then return to the middle. Pick a different corner each time.</p>
+        <p class="center muted" style="margin:.2rem 0 .3rem">⬆ Net is in front of you</p>
+        <div class="court-wrap"><div class="court" aria-label="One half of a badminton court showing six movement corners and your base position in the middle">
           <div class="net" aria-hidden="true"></div>
-          ${zones.map(([z])=>`<div class="zone">${esc(z)}</div>`).join("")}
-          <div class="center" title="Centre base">●</div>
+          ${zones.map(([z],i)=>`<div class="zone"><span class="zone-num">${i+1}</span> ${esc(z)}</div>`).join("")}
+          <div class="center" title="Stand here — middle of your half">●</div>
         </div></div>
-        <p class="muted center" style="margin-top:.5rem">Orange dot = your central base position</p>
+        <p class="muted center" style="margin-top:.4rem">⬇ Back of your half &nbsp;·&nbsp; ● = stand here (middle of <em>your</em> side)</p>
+        <div class="note" style="margin-top:.6rem">
+          <strong>No court at home?</strong> You don't need one. On any clear floor, patio or garden, just imagine a rectangle about <strong>5 big steps wide and 6 steps deep</strong>, with the "net" edge in front of you. The exact size doesn't matter — it's the movement pattern that counts.
+        </div>
+        <div style="margin-top:.5rem">${watchLink("badminton six corner shadow footwork", "drill for beginners")}</div>
       </div>
 
-      <details class="acc"><summary>The basic pattern</summary><div class="acc-body">
-        <ol>
-          <li>Start in a relaxed athletic position in the centre.</li>
-          <li>Perform a small split step.</li>
-          <li>Move toward one court area.</li>
-          <li>Use a controlled reaching step or shallow lunge.</li>
-          <li>Return to the centre.</li>
-          <li>Reset before moving again.</li>
+      <div class="card">
+        <h3 style="margin-top:0">Each move, step by step</h3>
+        <ol style="margin:0">
+          <li>Start relaxed in the <strong>middle of your half</strong>, knees softly bent.</li>
+          <li>Small <strong>split step</strong> (tiny soft hop on both feet).</li>
+          <li><strong>Move</strong> toward one corner (front, side or rear).</li>
+          <li><strong>Reach</strong> with a controlled step or shallow lunge.</li>
+          <li><strong>Return</strong> to the middle.</li>
+          <li><strong>Reset</strong>, then go to a different corner.</li>
         </ol>
-      </div></details>
+      </div>
 
       <div class="card">
         <label>Footwork level</label>
@@ -1117,6 +1160,7 @@
     return `
       <div class="card no-print" id="timerCard">
         <h2>Interval timer</h2>
+        <p class="muted" style="margin-top:-.2rem">Press <strong>Start</strong> and move during each "Work" countdown; stand and breathe during "Rest". It beeps at each change and tells you which round you're on.</p>
         <div class="timer-display" id="timerDisplay">
           <div class="timer-phase" id="timerPhase">Ready</div>
           <div class="timer-count" id="timerCount">${lvl.work}</div>
