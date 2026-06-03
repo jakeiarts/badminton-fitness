@@ -408,21 +408,28 @@
         sex: "Male", age: 24,
         heightCm: 170, heightImp: "5 ft 7 in",
         weight: 82, startWeight: 91,
-        lifestyle: "Mostly sedentary for ~7 years.",
+        summary:
+          "Returning badminton player, age 24, rebuilding fitness after a long sedentary period. Lost ~9 kg over 6 months, " +
+          "walks 5 km regularly, has started adding light jogging, and has previous badminton experience. " +
+          "Main goal: build a leaner, stronger, more agile, badminton-ready body through home training, outdoor running, footwork practice, and a gradual return to court sessions.",
+        lifestyle: "Roughly 7 years mostly sedentary — but the last 6 months have been a real turnaround. Returning from inactivity, not starting from zero.",
         progress:
-          "Lost ~9 kg over 6 months. Completed 100 push-ups/day for several months. Started walking 5 km daily ~1 month ago. " +
-          "Recently walked 23+ km on two travel days. Added light jogging on a 5 km route. Temporary calf exertion during jogging settles afterwards (not sharp pain). " +
-          "Played badminton at school and a local club; returning after ~7 years away.",
-        goal: "Become leaner, stronger, fitter, more agile and better prepared to play badminton regularly without a normal gym.",
-        environment: "Home, outdoors, and eventually a badminton court.",
-        goalRange: "74–78 kg (trend, not strict)",
+          "Lost ~9 kg in 6 months via a slight calorie deficit and becoming more active. " +
+          "Has done 100 push-ups/day consistently for ~6 months (pushing endurance above beginner level). " +
+          "Walking 5 km daily for ~1 month; calves were worked at first but have since adapted to a normal 5 km walk. " +
+          "On a recent trip walked 23+ km on two days — calves ached the next morning and recovered normally. " +
+          "Now adding jogging to the 5 km route and can jog a decent portion of it; calves feel temporarily worked/burning during jogging but it is NOT sharp pain, not one-sided, no swelling, no limp, and settles straight after. " +
+          "Played badminton ~once a week at school (inter-school competitions) and at a community leisure-centre group alongside ex-county players — experienced but rusty after ~7 years away; recently rekindled the love for it on holiday.",
+        goal: "Get into the best realistic shape for badminton: leaner, stronger, fitter, quicker, more agile and balanced, with resilient calves/ankles/feet/knees/hips/Achilles — ready for lunges, braking, split steps, side-to-side movement, repeated bursts and eventually jumping. Home/outdoor training only, no normal gym. Not aiming for a bodybuilder physique.",
+        environment: "Home, outdoors, walking/running routes, and eventually a badminton court.",
+        goalRange: "No single compulsory weight — track the trend down, waist, movement quality and performance",
         waist: "",
-        weeklyChange: "~0.3–0.5 kg/week",
+        weeklyChange: "Gradual, sustainable fat loss (~0.3–0.5 kg/week)",
       },
       equipment: { bodyweight: true, backpack: true, band: true, rope: true, chair: true, floor: true },
       trainingDays: ["Monday","Tuesday","Wednesday","Thursday","Friday"],
-      runLevel: 1,
-      footworkLevel: 1,
+      runLevel: 2,        // you already jog a good portion of 5 km — start above the absolute-easiest level and adjust
+      footworkLevel: 1,   // start footwork at technique level (the right place to begin, even for an experienced player)
       jumpingUnlocked: false,
       reminderText: "Train on most weekdays. Leave a recovery day between hard sessions while building your base.",
       week: DATA.weekDefault.map((d) => ({ ...d, items: d.items.slice() })),
@@ -539,6 +546,16 @@
         <p class="sub">${esc(fmtDate(todayISO()))} · Training week ${wk} · ${esc(w.dayName)}</p>
       </div>`;
 
+    // Profile summary + guiding principle (collapsed so it informs without cluttering)
+    html += `
+      <details class="acc no-print">
+        <summary>👤 Your training profile &amp; approach</summary>
+        <div class="acc-body">
+          <p>${esc(state.profile.summary || "")}</p>
+          <div class="note" style="margin-bottom:0"><strong>Guiding principle:</strong> train at the highest level you can recover from consistently. Progress when an exercise is clearly manageable and recovery stays normal. Reduce the workload only when genuine warning signs appear.</div>
+        </div>
+      </details>`;
+
     // Recovery selector
     html += `
       <div class="card">
@@ -614,10 +631,10 @@
   function calfCheckHTML() {
     return `
       <details class="acc" id="calfCheck">
-        <summary>🦵 Quick calf check (before running, jumping or footwork)</summary>
+        <summary>🦵 10-second calf check (before running, footwork or jumping)</summary>
         <div class="acc-body">
-          <p class="muted">Tick anything that is true right now:</p>
-          ${["Sharp pain in calves or Achilles","Swelling","Limping","Discomfort clearly worse than yesterday"]
+          <p class="muted" style="margin-bottom:.4rem">A calf that feels <strong>worked, tired or mildly burning during effort and then settles</strong> is normal training exertion — not a reason to stop. This check is only for genuine <strong>warning signs</strong>. Tick anything true <em>right now</em>:</p>
+          ${["Sharp or sudden pain in a calf or Achilles","Swelling","Limping","Clearly worse than yesterday, or one-sided throbbing pain"]
             .map((q,i) => `<label class="inline-check"><input type="checkbox" class="calfq" data-i="${i}"> ${esc(q)}</label>`).join("")}
           <div id="calfResult"></div>
         </div>
@@ -968,6 +985,7 @@
         <div class="segmented" role="group" aria-label="Running level">
           ${DATA.runLevels.map((l)=>`<button class="seg" data-runlevel="${l.n}" aria-pressed="${l.n===state.runLevel}">${l.n===6?"Int.":l.n}</button>`).join("")}
         </div>
+        <p class="muted" style="margin:.5rem 0 0">Pick the level that genuinely matches you — you already jog a good portion of 5 km, so don't feel you must start at Level 1. If a level feels easy two runs in a row with no pain, move up. The goal is to find the level you can repeat comfortably, then progress.</p>
         <h3 style="margin:.8rem 0 .3rem">${esc(lvl.title)}</h3>
         <ol>${lvl.steps.map((s)=>`<li>${esc(s)}</li>`).join("")}</ol>
         <div class="btn-row no-print">
@@ -1436,6 +1454,18 @@
     let html = `
       <div class="page-head"><h1>Guidance</h1><p class="sub">Tap a card to expand</p></div>
 
+      <div class="note"><strong>Your guiding principle:</strong> train at the highest level you can recover from consistently. Progress when an exercise is clearly manageable and recovery stays normal. Reduce the workload only when genuine warning signs appear.</div>
+
+      <details class="acc" open><summary>0 · Where you're starting from</summary><div class="acc-body">
+        <p>You're a <strong>returning player, not a blank-slate beginner</strong>. You've lost ~9 kg in 6 months, kept up 100 push-ups a day, walk 5 km regularly, and your calves have already adapted to walking and early jogging. You also have real badminton experience — just rusty.</p>
+        <p>So this plan does two things at once:</p>
+        <ul>
+          <li><strong>Won't hold you back:</strong> if an exercise is clearly too easy, rate it "Too easy" and move up a variation, add backpack load, slow the lowering, add range, or add a set. Don't stay on chair squats or 4-minute jogs you've outgrown.</li>
+          <li><strong>Won't let you rush the risky stuff:</strong> running, lunging, footwork and jumping volume go up gradually, gated by how you recover — because that's where comebacks get derailed.</li>
+        </ul>
+        <p class="muted" style="margin-bottom:0">A calf that feels worked or mildly burning during effort and then settles is <strong>normal exertion</strong>, not an injury. Warning signs are different — see the Safety card below.</p>
+      </div></details>
+
       <div class="note note-warn"><strong>Progression rule:</strong> Change only one major variable at a time — distance, speed, running intervals, footwork volume, strength sets, resistance, or jump volume.</div>
 
       <details class="acc"><summary>1 · What badminton fitness requires</summary><div class="acc-body">
@@ -1568,6 +1598,7 @@
       <div class="page-head"><h1>Settings</h1><p class="sub">Profile, equipment, data &amp; preferences</p></div>
 
       <details class="acc" open><summary>Profile</summary><div class="acc-body">
+        <div class="field"><label>Dashboard summary (shown on Today)</label><textarea data-prof="summary" style="min-height:90px">${esc(pr.summary||"")}</textarea></div>
         <div class="field-row cols-2">
           <div class="field"><label>Sex</label><input type="text" value="${esc(pr.sex)}" data-prof="sex"></div>
           <div class="field"><label>Age</label><input type="number" value="${esc(pr.age)}" data-prof="age"></div>
@@ -1648,11 +1679,15 @@
     }
     const recentFw = state.footworkLogs.slice(-1)[0];
     if (recentFw && recentFw.calf==="Pain") out.push("Footwork: you recorded calf pain. Reduce workload and review the safety guidance.");
-    // Strength: exercises marked "Too easy"
+    // Strength: exercises marked "Too easy" — push progression, don't leave you stuck
     Object.entries(state.exerciseFeel).forEach(([name,f])=>{
-      if (f && f.rating==="Too easy") out.push(`Strength: “${name}” is marked Too easy — try a harder variation or add backpack load.`);
+      if (f && f.rating==="Too easy") out.push(`Strength: “${name}” is marked Too easy — progress it: harder variation, add backpack load, slow the lowering, add range of motion, or add a set. Aim to finish sets with ~1–3 reps left.`);
     });
-    return out.slice(0,5);
+    // Strength: exercises marked "Too hard" — ease off rather than grind
+    Object.entries(state.exerciseFeel).forEach(([name,f])=>{
+      if (f && f.rating==="Too hard") out.push(`Strength: “${name}” is marked Too hard — drop to an easier variation or fewer reps. No need to train to failure.`);
+    });
+    return out.slice(0,6);
   }
 
   /* ----------------------------------------------------------
@@ -1905,7 +1940,7 @@
         Sharp pain, swelling, limping or worsening symptoms are reasons to reduce load and consider medical advice (Guidance → Safety). This app does not diagnose.
         <div class="btn-row" style="margin-top:.5rem"><button class="btn btn-sm" data-go="guidance">Open Safety</button></div></div>`;
     } else {
-      out.innerHTML = `<div class="note" style="margin-bottom:0">No warning signs ticked. If calves feel only mildly worked and settle when you slow down, that can be normal.</div>`;
+      out.innerHTML = `<div class="note" style="margin-bottom:0">✅ No warning signs — good to train. A worked or mildly burning feeling during effort that settles when you slow down is normal and expected. Keep most work controlled and stop only if something turns sharp.</div>`;
     }
   }
 
