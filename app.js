@@ -473,6 +473,8 @@
       completions: {},    // "YYYY-MM-DD" -> { sessionKey, results:{}, notes, done:true }
       weekStatus: {},     // "weekKey:Day" -> { done, rest, movedTo }
       dayOverride: {},    // "YYYY-MM-DD" -> session type chosen via the swap picker
+      dayAdvance: {},     // "YYYY-MM-DD" -> how many sessions ahead pulled via "next session"
+      extraActivities: [], // ad-hoc logged activities: { id, date, what, note }
       runLogs: [],
       footworkLogs: [],
       progress: {
@@ -668,6 +670,9 @@
       html += completeBlock(comp, "rest");
     }
 
+    // Log anything extra you did that wasn't planned
+    html += extraActivityHTML();
+
     // Compact safety reminder (one line, not a big banner)
     html += `<p class="muted center no-print" style="margin:.2rem 0 .8rem">⚠️ Never push through <strong>sharp</strong> pain — stop and switch to “Need a recovery day”.</p>`;
 
@@ -691,6 +696,37 @@
           ${["Sharp or sudden pain in a calf or Achilles","Swelling","Limping","Clearly worse than yesterday, or one-sided throbbing pain"]
             .map((q,i) => `<label class="inline-check"><input type="checkbox" class="calfq" data-i="${i}"> ${esc(q)}</label>`).join("")}
           <div id="calfResult"></div>
+        </div>
+      </details>`;
+  }
+
+  // Log ad-hoc activities the plan didn't schedule (e.g. "also did a walk-jog")
+  function extraActivityHTML() {
+    const recent = (state.extraActivities || []).slice().sort((a, b) => a.date < b.date ? 1 : -1).slice(0, 8);
+    const quick = ["Walk", "Walk-jog", "Run", "Badminton", "Footwork", "Cycle", "Other"];
+    return `
+      <details class="acc no-print">
+        <summary>➕ Add something extra you did</summary>
+        <div class="acc-body">
+          <p class="muted" style="margin-bottom:.6rem">Did something the plan didn't list (a walk-jog, a game, etc.)? Log it here — you can set any date, including yesterday.</p>
+          <form id="extraForm" class="stack">
+            <div class="field-row cols-2">
+              <div class="field" style="margin:0"><label>Date</label><input type="date" name="date" value="${todayISO()}" max="${todayISO()}"></div>
+              <div class="field" style="margin:0"><label>What did you do?</label>
+                <input list="extraOptions" name="what" placeholder="e.g. Walk-jog 5 km" required>
+                <datalist id="extraOptions">${quick.map((q) => `<option value="${esc(q)}">`).join("")}</datalist>
+              </div>
+            </div>
+            <div class="field" style="margin:0"><label>Note (optional)</label><input type="text" name="note" placeholder="How long, how it felt…"></div>
+            <button class="btn btn-primary btn-block" type="submit">Add activity</button>
+          </form>
+          ${recent.length ? `
+            <h3 style="margin:1rem 0 .4rem">Recently logged</h3>
+            ${recent.map((a) => `
+              <div class="log-card" style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
+                <span><strong>${esc(fmtShort(a.date))}</strong> · ${esc(a.what)}${a.note ? ` <span class="muted">— ${esc(a.note)}</span>` : ""}</span>
+                <button class="btn btn-sm btn-ghost" data-delextra data-id="${esc(a.id)}" aria-label="Delete">✕</button>
+              </div>`).join("")}` : ""}
         </div>
       </details>`;
   }
@@ -943,10 +979,25 @@
         <div class="field"><label for="todayNotes">Session notes</label>
           <textarea id="todayNotes" placeholder="How did it go?">${esc(notes)}</textarea></div>
         ${done
-          ? `<div class="note" style="margin-bottom:.6rem">✅ Completed today. ${esc(encourage())}</div>
+          ? `<div class="note" style="margin-bottom:.6rem">✅ Completed. ${esc(encourage())}</div>
+             <button class="btn btn-primary btn-block" data-nextsession style="margin-bottom:.5rem">➡️ Give me my next session</button>
              <button class="btn btn-ghost btn-block" data-uncomplete>Mark as not done</button>`
           : `<button class="btn btn-primary btn-block" data-complete data-key="${esc(sessionKey||"")}">Complete Workout</button>`}
       </div>`;
+  }
+
+  // Upcoming non-rest sessions in the weekly plan, starting from tomorrow
+  function upcomingSessions(maxDays) {
+    const list = [];
+    const base = new Date(todayISO() + "T00:00:00");
+    for (let i = 1; i <= (maxDays || 14); i++) {
+      const d = new Date(base); d.setDate(d.getDate() + i);
+      const dayName = DAYS[d.getDay()];
+      const wd = state.week.find((x) => x.day === dayName);
+      const type = wd ? wd.type : "rest";
+      if (type && type !== "rest") list.push({ type, dayName, daysAhead: i });
+    }
+    return list;
   }
 
   function encourage() {
@@ -979,6 +1030,15 @@
       default:          return "Recovery — when your calves and legs actually adapt and badminton fitness is built.";
     }
   }
+
+  // Calendar date of a given weekday in the same Sun–Sat week as today
+  function dateOfWeekday(dayName) {
+    const today = new Date(todayISO() + "T00:00:00");
+    const diff = DAYS.indexOf(dayName) - today.getDay();
+    const d = new Date(today); d.setDate(today.getDate() + diff);
+    return d.toISOString().slice(0, 10);
+  }
+  function extrasOn(iso) { return (state.extraActivities || []).filter((a) => a.date === iso); }
 
   function weekLoad() {
     // crude load estimate from session types this week
@@ -1036,6 +1096,7 @@
         </div>
         <ul style="margin:.4rem 0 .4rem">${items.map((i)=>`<li>${esc(i)}</li>`).join("")}</ul>
         <p class="muted" style="margin:0 0 .5rem;font-size:.85rem">🏸 ${esc(badmintonBenefit(st.rest ? "rest" : d.type))}</p>
+        ${(() => { const ex = extrasOn(dateOfWeekday(d.day)); return ex.length ? `<p class="muted" style="margin:0 0 .5rem;font-size:.85rem">➕ Also did: ${ex.map((a) => esc(a.what)).join(", ")}</p>` : ""; })()}
         <details class="acc" style="border:none;background:transparent;margin:0">
           <summary style="padding:.4rem 0;min-height:auto">Adjust this day</summary>
           <div class="acc-body" style="padding:.5rem 0 0">
@@ -1918,7 +1979,7 @@
      16. Global event handling (delegation)
      ---------------------------------------------------------- */
   document.addEventListener("click", (e) => {
-    const t = e.target.closest("[data-go],[data-rec],[data-swaptoday],[data-clearoverride],[data-strength-check],[data-complete],[data-uncomplete],[data-feel],[data-filter],[data-clearfilters],[data-runlevel],[data-runstep],[data-fwlevel],[data-weekdone],[data-weekrest],[data-additem],[data-resetweek],[data-milestone],[data-addmilestone],[data-delmetric],[data-dellog],[data-jumpcrit],[data-unlockjump],[data-lockjump],[data-export],[data-importbtn],[data-reset],[data-calf-switch],[data-setjump]");
+    const t = e.target.closest("[data-go],[data-rec],[data-swaptoday],[data-clearoverride],[data-nextsession],[data-delextra],[data-strength-check],[data-complete],[data-uncomplete],[data-feel],[data-filter],[data-clearfilters],[data-runlevel],[data-runstep],[data-fwlevel],[data-weekdone],[data-weekrest],[data-additem],[data-resetweek],[data-milestone],[data-addmilestone],[data-delmetric],[data-dellog],[data-jumpcrit],[data-unlockjump],[data-lockjump],[data-export],[data-importbtn],[data-reset],[data-calf-switch],[data-setjump]");
     if (!t) return;
 
     if (t.dataset.go) { go(t.dataset.go); return; }
@@ -1928,6 +1989,8 @@
     if (t.dataset.swaptoday) {
       const sched = workoutForToday().scheduled;
       state.dayOverride = state.dayOverride || {};
+      state.dayAdvance = state.dayAdvance || {};
+      delete state.dayAdvance[todayISO()];   // manual choice resets the "next session" counter
       if (t.dataset.swaptoday === sched) delete state.dayOverride[todayISO()]; // chose the planned one = no override
       else state.dayOverride[todayISO()] = t.dataset.swaptoday;
       save(); renderToday($("#tab-today"));
@@ -1936,8 +1999,28 @@
     }
     if (t.hasAttribute("data-clearoverride")) {
       if (state.dayOverride) delete state.dayOverride[todayISO()];
+      if (state.dayAdvance) delete state.dayAdvance[todayISO()];
       save(); renderToday($("#tab-today")); toast("Back to your planned session");
       return;
+    }
+    if (t.hasAttribute("data-nextsession")) {
+      const upcoming = upcomingSessions(14);
+      if (!upcoming.length) { toast("No upcoming sessions in your plan"); return; }
+      state.dayAdvance = state.dayAdvance || {};
+      const idx = Math.min(state.dayAdvance[todayISO()] || 0, upcoming.length - 1);
+      const next = upcoming[idx];
+      state.dayOverride = state.dayOverride || {};
+      state.dayOverride[todayISO()] = next.type;
+      state.dayAdvance[todayISO()] = idx + 1;   // next press goes one further
+      delete state.completions[todayISO()];     // start the pulled session fresh (the weekly "done" tick stays)
+      save(); renderToday($("#tab-today"));
+      window.scrollTo({ top: 0 });
+      toast("Loaded next: " + (SESSION_TYPES[next.type] || {}).label + " (normally " + next.dayName + ")");
+      return;
+    }
+    if (t.dataset.delextra) {
+      state.extraActivities = (state.extraActivities || []).filter((a) => a.id !== t.dataset.delextra);
+      save(); renderToday($("#tab-today")); return;
     }
 
     if (t.hasAttribute("data-strength-check")) {
@@ -2025,8 +2108,25 @@
     const f = e.target;
     if (f.id === "runForm") { e.preventDefault(); saveRun(f); return; }
     if (f.id === "fwForm") { e.preventDefault(); saveFw(f); return; }
+    if (f.id === "extraForm") { e.preventDefault(); saveExtra(f); return; }
     if (f.dataset.metricform!==undefined) { e.preventDefault(); addMetric(f.dataset.key, f); return; }
   });
+
+  function saveExtra(form) {
+    const fd = new FormData(form);
+    const what = (fd.get("what") || "").toString().trim();
+    if (!what) { toast("Type what you did"); return; }
+    state.extraActivities = state.extraActivities || [];
+    state.extraActivities.push({
+      id: uid(),
+      date: fd.get("date") || todayISO(),
+      what: what,
+      note: (fd.get("note") || "").toString().trim(),
+    });
+    save();
+    renderToday($("#tab-today"));
+    toast("Extra activity logged");
+  }
 
   function cssEsc(s){ return String(s).replace(/"/g,'\\"'); }
 
