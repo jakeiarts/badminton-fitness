@@ -1031,14 +1031,60 @@
     }
   }
 
-  // Calendar date of a given weekday in the same Sun–Sat week as today
+  // Calendar date of a given weekday in the same Sun–Sat week as today.
+  // Uses UTC throughout so it matches how todayISO() stores dates (avoids off-by-one across timezones).
   function dateOfWeekday(dayName) {
-    const today = new Date(todayISO() + "T00:00:00");
-    const diff = DAYS.indexOf(dayName) - today.getDay();
-    const d = new Date(today); d.setDate(today.getDate() + diff);
-    return d.toISOString().slice(0, 10);
+    const t = new Date(todayISO() + "T00:00:00Z");
+    const diff = DAYS.indexOf(dayName) - t.getUTCDay();
+    t.setUTCDate(t.getUTCDate() + diff);
+    return t.toISOString().slice(0, 10);
   }
   function extrasOn(iso) { return (state.extraActivities || []).filter((a) => a.date === iso); }
+
+  // Best-effort recovery of a per-exercise note (notes aren't date-stamped in older data)
+  function exerciseNoteFor(name) {
+    for (const key of ["A", "B"]) {
+      const cust = state.sessionCustom[key];
+      if (!cust || !cust.notes) continue;
+      for (const ref in cust.notes) {
+        if (!cust.notes[ref]) continue;
+        if (ref === name || chosenName(key, { ref }) === name) return cust.notes[ref];
+      }
+    }
+    return "";
+  }
+
+  // Everything recorded for a given date — used by the "look back" views
+  function dayRecordHTML(iso) {
+    if (!iso) return `<p class="muted">Pick a date to see what you did.</p>`;
+    const comp = state.completions[iso];
+    const dayName = DAYS[new Date(iso + "T00:00:00").getDay()];
+    const wd = state.week.find((x) => x.day === dayName);
+    const type = (state.dayOverride && state.dayOverride[iso]) || (wd ? wd.type : "rest");
+    const sessLabel = (SESSION_TYPES[type] || { label: type === "flex" ? "Flexible" : "Rest" }).label;
+    const runs = state.runLogs.filter((r) => r.date === iso);
+    const fws = state.footworkLogs.filter((f) => f.date === iso);
+    const extras = extrasOn(iso);
+
+    const resultRows = comp && comp.results
+      ? Object.entries(comp.results).filter(([n, r]) => r && (r.done || r.actual || r.note))
+      : [];
+    const hasAny = (comp && (comp.done || resultRows.length || comp.notes)) || runs.length || fws.length || extras.length;
+    if (!hasAny) return `<p class="muted">Nothing recorded for this day.</p>`;
+
+    let h = `<p style="margin:.1rem 0 .5rem"><strong>Session:</strong> ${esc(sessLabel)}${comp && comp.done ? ` <span class="pill pill-ok">Completed</span>` : ``}</p>`;
+    if (resultRows.length) {
+      h += `<ul style="margin:.2rem 0 .6rem">` + resultRows.map(([n, r]) => {
+        const note = r.note || exerciseNoteFor(n);
+        return `<li>${r.done ? "✅ " : "▫️ "}<strong>${esc(n)}</strong>${r.actual ? ` — ${esc(r.actual)}` : ""}${note ? ` <span class="muted">(${esc(note)})</span>` : ""}</li>`;
+      }).join("") + `</ul>`;
+    }
+    if (comp && comp.notes) h += `<p style="margin:.2rem 0"><strong>Session notes:</strong> ${esc(comp.notes)}</p>`;
+    runs.forEach((r) => h += `<p style="margin:.2rem 0"><strong>🏃 Run:</strong> ${esc([r.dist && r.dist + " km", r.dur && r.dur + " min", r.rpe && r.rpe + "/10", r.calf, r.notes].filter(Boolean).join(" · "))}</p>`);
+    fws.forEach((f) => h += `<p style="margin:.2rem 0"><strong>🏸 Footwork:</strong> ${esc(["Level " + f.level, f.rounds && f.rounds + " rounds", f.rpe && f.rpe + "/10", f.notes].filter(Boolean).join(" · "))}</p>`);
+    extras.forEach((a) => h += `<p style="margin:.2rem 0"><strong>➕ Extra:</strong> ${esc(a.what)}${a.note ? ` — ${esc(a.note)}` : ""}</p>`);
+    return h;
+  }
 
   function weekLoad() {
     // crude load estimate from session types this week
@@ -1083,7 +1129,13 @@
       <div class="note note-warn">Do not stack a hard run, intense footwork session, demanding badminton session, and jumping workout on consecutive days when you are still building your base.</div>
 
       <div class="card"><div class="row-between"><h2 style="margin:0">This week</h2>
-        <span class="pill ${doneN? "pill-ok":""}">${doneN}/${state.week.length} complete</span></div></div>`;
+        <span class="pill ${doneN? "pill-ok":""}">${doneN}/${state.week.length} complete</span></div></div>
+
+      <div class="card no-print">
+        <label for="lookupDay">📖 Look back at any day</label>
+        <input type="date" id="lookupDay" max="${todayISO()}">
+        <div id="lookupResult" style="margin-top:.7rem">${dayRecordHTML("")}</div>
+      </div>`;
 
     html += state.week.map((d, idx) => {
       const st = state.weekStatus[wkk+":"+d.day] || {};
@@ -1097,6 +1149,10 @@
         <ul style="margin:.4rem 0 .4rem">${items.map((i)=>`<li>${esc(i)}</li>`).join("")}</ul>
         <p class="muted" style="margin:0 0 .5rem;font-size:.85rem">🏸 ${esc(badmintonBenefit(st.rest ? "rest" : d.type))}</p>
         ${(() => { const ex = extrasOn(dateOfWeekday(d.day)); return ex.length ? `<p class="muted" style="margin:0 0 .5rem;font-size:.85rem">➕ Also did: ${ex.map((a) => esc(a.what)).join(", ")}</p>` : ""; })()}
+        <details class="acc" style="border:none;background:transparent;margin:0 0 .2rem">
+          <summary style="padding:.4rem 0;min-height:auto">📖 What you did</summary>
+          <div class="acc-body" style="padding:.5rem 0 0">${dayRecordHTML(dateOfWeekday(d.day))}</div>
+        </details>
         <details class="acc" style="border:none;background:transparent;margin:0">
           <summary style="padding:.4rem 0;min-height:auto">Adjust this day</summary>
           <div class="acc-body" style="padding:.5rem 0 0">
@@ -2085,6 +2141,7 @@
     if (t.hasAttribute && t.hasAttribute("data-setjump")) { state.jumpingUnlocked=t.checked; save(); return; }
     if (t.hasAttribute && t.hasAttribute("data-setdark")) { state.theme=t.checked?"dark":"light"; applyTheme(); save(); return; }
     if (t.id === "importFile" && t.files && t.files[0]) { importData(t.files[0]); t.value=""; return; }
+    if (t.id === "lookupDay") { const out = $("#lookupResult"); if (out) out.innerHTML = dayRecordHTML(t.value); return; }
   });
 
   // live text inputs (save on input, no re-render to keep focus)
@@ -2093,7 +2150,16 @@
     if (t.dataset.prof!==undefined) { const v = t.type==="number"?Number(t.value):t.value; state.profile[t.dataset.prof]=v; save(); return; }
     if (t.dataset.prof2!==undefined) { state[t.dataset.prof2]=t.value; save(); return; }
     if (t.dataset.setsedit!==undefined) { setSessionCustom(t.dataset.key,"sets",t.dataset.ref,t.value); return; }
-    if (t.dataset.exnote!==undefined) { setSessionCustom(t.dataset.key,"notes",t.dataset.ref,t.value); return; }
+    if (t.dataset.exnote!==undefined) {
+      setSessionCustom(t.dataset.key,"notes",t.dataset.ref,t.value);
+      // also date-stamp the note so you can look it back up per day
+      const nm = chosenName(t.dataset.key, { ref: t.dataset.ref });
+      const c = ensureTodayComp(t.dataset.key);
+      c.results[nm] = c.results[nm] || {};
+      c.results[nm].note = t.value;
+      save();
+      return;
+    }
     if (t.dataset.actual!==undefined) { recordActual(t.dataset.key,t.dataset.name,t.value); return; }
     if (t.id === "todayNotes") { setTodayNotes(t.value); return; }
     if (t.dataset.feelnote!==undefined) { const f=state.exerciseFeel[t.dataset.name]||{}; f.note=t.value; state.exerciseFeel[t.dataset.name]=f; save(); return; }
